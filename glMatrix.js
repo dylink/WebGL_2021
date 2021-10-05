@@ -9,7 +9,7 @@ vec3.create = function (a) {
         b[1] = a[1];
         b[2] = a[2]
     }
-    return b
+    return b 
 };
 
 vec3.set = function (a, b) {
