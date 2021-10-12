@@ -6,7 +6,7 @@ varying vec3 N;
 
 #define M_PI 3.1415926535897932384626433832795
 
-float sigma = 0.1;
+float sigma = 0.05;
 float ni = 1.5;
 
 vec3 SRCPOS = vec3(0,0,0);
@@ -21,8 +21,8 @@ float d_dot(vec3 a, vec3 b){
 
 // ============================================================
 
-float Fresnel(vec3 i, vec3 m){
-  float c = d_dot(i, m);
+float Fresnel(float im){
+  float c = im;
   float g = sqrt((ni*ni)+(c*c)-1.0);
 	float n1 = (g-c)*(g-c);
 	float n2 = (g+c)*(g+c);
@@ -33,11 +33,11 @@ float Fresnel(vec3 i, vec3 m){
 
 // ============================================================
 
-float g(vec3 N, vec3 m, vec3 i, vec3 o){
-	float n1 = 2.0*d_dot(N,m)*d_dot(N, o);
-	n1 /= d_dot(o, m);
-	float n2 = 2.0*d_dot(N,m)*d_dot(N, i);
-	n2 /= d_dot(i, m);
+float g(float Nm, float No, float om, float Ni, float im){
+	float n1 = 2.0*Nm*No;
+	n1 /= max(1.0, om);
+	float n2 = 2.0*Nm*Ni;
+	n2 /= max(1.0, im);
   return min( min(1.0, n1), n2);
 }
 
@@ -45,6 +45,7 @@ float g(vec3 N, vec3 m, vec3 i, vec3 o){
 
 float beckmann (float cosTheta){
 	float tang = tan(acos(cosTheta))*tan(acos(cosTheta));
+  if(tang < 0.0) return 0.0;
 	float denom = (M_PI*sigma*sigma*(pow(cosTheta, 4.0)));
 	float e = exp(-tang/(2.0*sigma*sigma));
   return (e/denom);
@@ -52,9 +53,9 @@ float beckmann (float cosTheta){
 
 // ============================================================
 
-float CookTorrance(vec3 N, vec3 m, vec3 i, vec3 o){
-  float FDG = Fresnel(i, m) * beckmann(dot(N, m)) * g(N, m,i,o);
-  return FDG/(4.0*d_dot(i, N)*d_dot(o, N));
+float CookTorrance(float Nm, float No, float om, float Ni, float im){
+  float FDG = Fresnel(im) * beckmann(Nm) * g(Nm, No, om, Ni, im);
+  return FDG/(4.0*Ni*No);
 }
 
 // ============================================================
@@ -65,9 +66,14 @@ void main(void)
   vec3 o = normalize(-pos3D.xyz); // o == obsPos - pos3D.xyz
   vec3 m = normalize(i + o);
 
-	float cosTi = dot(N, i);
+  float cosTi = d_dot(N, i);
 
-  float FrSpec = CookTorrance(N, m,i,o);
+  float cosTm = d_dot(N, m);
+  float cosTo = d_dot(N, o);
+  float om = d_dot(o, m);
+  float im = d_dot(i, m);
+
+  float FrSpec = CookTorrance(cosTm, cosTo, om, cosTi, im);
 	vec3 Fr = (vec3(0.01,0.9,0.01)/M_PI) + FrSpec*0.1; // Lambert rendering, eye light source
 	vec3 col = SRCPOW * Fr * cosTi;
 	gl_FragColor = vec4(col,1.0);
