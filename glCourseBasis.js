@@ -5,10 +5,12 @@ var gl;
 // =====================================================
 var mvMatrix = mat4.create();
 var pMatrix = mat4.create();
+var mvMatrixRot = mat4.create();
 var rotMatrix = mat4.create();
 var distCENTER;
 // =====================================================
 
+var CUBEMAP = null;
 var OBJ1 = null;
 var PLANE = null;
 
@@ -26,7 +28,7 @@ class objmesh {
 		this.loaded = -1;
 		this.shader = null;
 		this.mesh = null;
-		
+
 		loadObjFile(this);
 		loadShaders(this);
 	}
@@ -48,8 +50,9 @@ class objmesh {
 		this.shader.rMatrixUniform = gl.getUniformLocation(this.shader, "uRMatrix");
 		this.shader.mvMatrixUniform = gl.getUniformLocation(this.shader, "uMVMatrix");
 		this.shader.pMatrixUniform = gl.getUniformLocation(this.shader, "uPMatrix");
+		this.shader.mvMatrixRotUniform = gl.getUniformLocation(this.shader, "uMVMatrixRot");
 	}
-	
+
 	// --------------------------------------------
 	setMatrixUniforms() {
 		mat4.identity(mvMatrix);
@@ -58,8 +61,17 @@ class objmesh {
 		gl.uniformMatrix4fv(this.shader.rMatrixUniform, false, rotMatrix);
 		gl.uniformMatrix4fv(this.shader.mvMatrixUniform, false, mvMatrix);
 		gl.uniformMatrix4fv(this.shader.pMatrixUniform, false, pMatrix);
+
+		this.shader.skyboxLocation = gl.getUniformLocation(this.shader, "u_skybox");
+
+    gl.uniform1i(this.shader.skyboxLocation, 0);
+
+		mat4.identity(mvMatrixRot);
+		mat4.multiply(mvMatrixRot, rotMatrix);
+		mat4.rotateX(mvMatrixRot, 90 * Math.PI / 180);
+		gl.uniformMatrix4fv(this.shader.mvMatrixRotUniform, false, mvMatrixRot);
 	}
-	
+
 	// --------------------------------------------
 	draw() {
 		if(this.shader && this.loaded==4 && this.mesh != null) {
@@ -72,14 +84,165 @@ class objmesh {
 
 }
 
+class cubemap {
+	constructor() {
+		this.shaderName='cubemap';
+		this.loaded=-1;
+		this.shader=null;
+		this.initAll();
+	}
 
+	initAll() {
+
+		var positions = new Float32Array(
+    [
+			-1.0,  1.0, -1.0,
+      -1.0, -1.0, -1.0,
+       1.0, -1.0, -1.0,
+       1.0, -1.0, -1.0,
+       1.0,  1.0, -1.0,
+      -1.0,  1.0, -1.0,
+
+      -1.0, -1.0,  1.0,
+      -1.0, -1.0, -1.0,
+      -1.0,  1.0, -1.0,
+      -1.0,  1.0, -1.0,
+      -1.0,  1.0,  1.0,
+      -1.0, -1.0,  1.0,
+
+       1.0, -1.0, -1.0,
+       1.0, -1.0,  1.0,
+       1.0,  1.0,  1.0,
+       1.0,  1.0,  1.0,
+       1.0,  1.0, -1.0,
+       1.0, -1.0, -1.0,
+
+      -1.0, -1.0,  1.0,
+      -1.0,  1.0,  1.0,
+       1.0,  1.0,  1.0,
+       1.0,  1.0,  1.0,
+       1.0, -1.0,  1.0,
+      -1.0, -1.0,  1.0,
+
+      -1.0,  1.0, -1.0,
+       1.0,  1.0, -1.0,
+       1.0,  1.0,  1.0,
+       1.0,  1.0,  1.0,
+      -1.0,  1.0,  1.0,
+      -1.0,  1.0, -1.0,
+
+      -1.0, -1.0, -1.0,
+      -1.0, -1.0,  1.0,
+       1.0, -1.0, -1.0,
+       1.0, -1.0, -1.0,
+      -1.0, -1.0,  1.0,
+       1.0, -1.0,  1.0
+    ]);
+		this.vBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.vBuffer);
+  	gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+
+		this.vBuffer.itemSize = 3;
+		this.vBuffer.numItems = 36;
+
+
+
+		var texture = gl.createTexture();
+	  gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+
+	  const faceInfos = [
+	    {
+	      target: gl.TEXTURE_CUBE_MAP_POSITIVE_X,
+	      url: './skybox/street.jpg',
+	    },
+	    {
+	      target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
+	      url: './skybox/street_1.jpg',
+	    },
+	    {
+	      target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
+	      url: './skybox/street_2.jpg',
+	    },
+	    {
+	      target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+	      url: './skybox/street_3.jpg',
+	    },
+	    {
+	      target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
+	      url: './skybox/street_4.jpg',
+	    },
+	    {
+	      target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,
+	      url: './skybox/street_5.jpg',
+	    },
+	  ];
+	  faceInfos.forEach((faceInfo) => {
+	    const {target, url} = faceInfo;
+	    const level = 0;
+	    const internalFormat = gl.RGBA;
+	    const width = 512;
+	    const height = 512;
+	    const format = gl.RGBA;
+	    const type = gl.UNSIGNED_BYTE;
+	    gl.texImage2D(target, level, internalFormat, width, height, 0, format, type, null);
+	    const image = new Image();
+	    image.src = url;
+	    image.addEventListener('load', function() {
+	      gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+	      gl.texImage2D(target, level, internalFormat, format, type, image);
+	      gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+	    });
+	  });
+	  gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+	  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+
+		loadShaders(this);
+
+	}
+
+	setShadersParams() {
+
+		gl.useProgram(this.shader);
+
+		this.shader.vAttrib = gl.getAttribLocation(this.shader, "a_position");
+		gl.enableVertexAttribArray(this.shader.vAttrib);
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.vBuffer);
+		gl.vertexAttribPointer(this.shader.vAttrib, this.vBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+		this.shader.skyboxLocation = gl.getUniformLocation(this.shader, "u_skybox");
+
+    gl.uniform1i(this.shader.skyboxLocation, 0);
+
+		this.shader.pMatrixUniform = gl.getUniformLocation(this.shader, "uPMatrix");
+		this.shader.mvMatrixUniform = gl.getUniformLocation(this.shader, "uMVMatrix");
+	}
+
+	setMatrixUniforms(){
+		mat4.identity(mvMatrix);
+		mat4.multiply(mvMatrix, rotMatrix);
+		mat4.rotateX(mvMatrix, 90 * Math.PI / 180);
+		gl.uniformMatrix4fv(this.shader.mvMatrixUniform, false, mvMatrix);
+		gl.uniformMatrix4fv(this.shader.pMatrixUniform, false, pMatrix);
+	}
+
+	draw(){
+
+		if(this.shader && this.loaded==4) {
+			this.setShadersParams();
+			this.setMatrixUniforms(this);
+
+			gl.drawArrays(gl.TRIANGLES, 0, this.vBuffer.numItems);
+		}
+	}
+
+}
 
 // =====================================================
 // PLAN 3D, Support géométrique
 // =====================================================
 
 class plane {
-	
+
 	// --------------------------------------------
 	constructor() {
 		this.shaderName='plane';
@@ -87,7 +250,7 @@ class plane {
 		this.shader=null;
 		this.initAll();
 	}
-		
+
 	// --------------------------------------------
 	initAll() {
 		var size=1.0;
@@ -119,8 +282,8 @@ class plane {
 
 		loadShaders(this);
 	}
-	
-	
+
+
 	// --------------------------------------------
 	setShadersParams() {
 		gl.useProgram(this.shader);
@@ -151,10 +314,10 @@ class plane {
 
 	// --------------------------------------------
 	draw() {
-		if(this.shader && this.loaded==4) {		
+		if(this.shader && this.loaded==4) {
 			this.setShadersParams();
 			this.setMatrixUniforms(this);
-			
+
 			gl.drawArrays(gl.TRIANGLE_FAN, 0, this.vBuffer.numItems);
 			gl.drawArrays(gl.LINE_LOOP, 0, this.vBuffer.numItems);
 		}
@@ -181,7 +344,7 @@ function initGL(canvas)
 		gl.clearColor(0.7, 0.7, 0.7, 1.0);
 		gl.enable(gl.DEPTH_TEST);
 		gl.enable(gl.CULL_FACE);
-		gl.cullFace(gl.BACK); 
+		gl.cullFace(gl.BACK);
 	} catch (e) {}
 	if (!gl) {
 		console.log("Could not initialise WebGL");
@@ -202,7 +365,7 @@ loadObjFile = function(OBJ3D)
 		}
 	}
 
-	xhttp.open("GET", "bunny.obj", true);
+	xhttp.open("GET", "sphere.obj", true);
 	xhttp.send();
 }
 
@@ -217,7 +380,7 @@ function loadShaders(Obj3D) {
 // =====================================================
 function loadShaderText(Obj3D,ext) {   // lecture asynchrone...
   var xhttp = new XMLHttpRequest();
-  
+
   xhttp.onreadystatechange = function() {
 	if (xhttp.readyState == 4 && xhttp.status == 200) {
 		if(ext=='.vs') { Obj3D.vsTxt = xhttp.responseText; Obj3D.loaded ++; }
@@ -229,7 +392,7 @@ function loadShaderText(Obj3D,ext) {   // lecture asynchrone...
 		}
 	}
   }
-  
+
   Obj3D.loaded = 0;
   xhttp.open("GET", Obj3D.shaderName+ext, true);
   xhttp.send();
@@ -267,7 +430,7 @@ function compileShaders(Obj3D)
 
 // =====================================================
 function webGLStart() {
-	
+
 	var canvas = document.getElementById("WebGL-test");
 
 	canvas.onmousedown = handleMouseDown;
@@ -276,17 +439,21 @@ function webGLStart() {
 	canvas.onwheel = handleMouseWheel;
 
 	initGL(canvas);
+
 	mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
-	
+	/*mat4.perspective(80, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrixInv);
+	mat4.inverse(pMatrixInv);*/
+
 	mat4.identity(rotMatrix);
 	mat4.rotate(rotMatrix, rotX, [1, 0, 0]);
 	mat4.rotate(rotMatrix, rotY, [0, 0, 1]);
 
 	distCENTER = vec3.create([0,-0.2,-3]);
-	
+
+	CUBEMAP = new cubemap();
 	PLANE = new plane();
 	OBJ1 = new objmesh('bunny.obj');
-	
+
 	tick();
 }
 
@@ -294,9 +461,7 @@ function webGLStart() {
 function drawScene() {
 
 	gl.clear(gl.COLOR_BUFFER_BIT);
-	PLANE.draw();
+	CUBEMAP.draw();
+	//PLANE.draw();
 	OBJ1.draw();
 }
-
-
-

@@ -4,12 +4,18 @@ precision mediump float;
 varying vec4 pos3D;
 varying vec3 N;
 
+varying mat4 rot;
+
+uniform samplerCube u_skybox;
+varying mat4 per;
+
 #define M_PI 3.1415926535897932384626433832795
+
 
 float sigma = 0.05;
 float ni = 1.5;
 
-vec3 SRCPOS = vec3(0,0,0);
+vec3 SRCPOS = vec3(0);
 vec3 SRCPOW = vec3(2);
 
 // ============================================================
@@ -74,7 +80,11 @@ void main(void)
   float im = d_dot(i, m);
 
   float FrSpec = CookTorrance(cosTm, cosTo, om, cosTi, im);
-	vec3 Fr = (vec3(0.01,0.9,0.01)/M_PI) + FrSpec*0.1; // Lambert rendering, eye light source
+	vec3 Fr = (vec3(0.0,0.9,0.0)/M_PI) + FrSpec*0.1; // Lambert rendering, eye light source
 	vec3 col = SRCPOW * Fr * cosTi;
-	gl_FragColor = vec4(col,1.0);
+	//gl_FragColor = vec4(col,1.0);
+
+  vec3 refl = reflect(-o, N);
+  gl_FragColor = textureCube(u_skybox, normalize(refl * mat3(rot)));
+  //gl_FragColor = textureCube(u_skybox, pos3D.xyz);
 }
