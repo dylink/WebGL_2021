@@ -47,6 +47,20 @@ class objmesh {
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.normalBuffer);
 		gl.vertexAttribPointer(this.shader.nAttrib, this.mesh.vertexBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
+		const rbs = document.querySelectorAll('input[name="choice"]');
+		let selectedValue;
+    for (const rb of rbs) {
+        if (rb.checked) {
+            selectedValue = rb.value;
+            break;
+        }
+    }
+		this.shader.material = gl.getUniformLocation(this.shader, "material");
+		gl.uniform1f(this.shader.material, selectedValue);
+		var slider = document.getElementById("myRange").value;
+		this.shader.sigma = gl.getUniformLocation(this.shader, "sigma");
+		gl.uniform1f(this.shader.sigma, slider/100.0);
+
 		this.shader.rMatrixUniform = gl.getUniformLocation(this.shader, "uRMatrix");
 		this.shader.mvMatrixUniform = gl.getUniformLocation(this.shader, "uMVMatrix");
 		this.shader.pMatrixUniform = gl.getUniformLocation(this.shader, "uPMatrix");
@@ -77,12 +91,19 @@ class objmesh {
 		if(this.shader && this.loaded==4 && this.mesh != null) {
 			this.setShadersParams();
 			this.setMatrixUniforms();
+
+			//slider.
+			//console.log(slider);
 			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.mesh.indexBuffer);
 			gl.drawElements(gl.TRIANGLES, this.mesh.indexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
 		}
 	}
 
 }
+
+// =====================================================
+// CUBEMAP, Création d'une skybox
+// =====================================================
 
 class cubemap {
 	constructor() {
@@ -145,8 +166,6 @@ class cubemap {
 		this.vBuffer.itemSize = 3;
 		this.vBuffer.numItems = 36;
 
-
-
 		var texture = gl.createTexture();
 	  gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
 
@@ -197,7 +216,6 @@ class cubemap {
 	  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
 
 		loadShaders(this);
-
 	}
 
 	setShadersParams() {
@@ -365,7 +383,7 @@ loadObjFile = function(OBJ3D)
 		}
 	}
 
-	xhttp.open("GET", "sphere.obj", true);
+	xhttp.open("GET", "bunny.obj", true);
 	xhttp.send();
 }
 

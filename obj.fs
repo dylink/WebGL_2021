@@ -3,17 +3,17 @@ precision mediump float;
 
 varying vec4 pos3D;
 varying vec3 N;
-
-varying mat4 rot;
+varying mat4 rotMatrix;
 
 uniform samplerCube u_skybox;
-varying mat4 per;
+
+uniform float material;
+uniform float sigma;
 
 #define M_PI 3.1415926535897932384626433832795
 
-
-float sigma = 0.05;
-float ni = 1.5;
+//float sigma = 0.04;
+float ni = 4.0;
 
 vec3 SRCPOS = vec3(0);
 vec3 SRCPOW = vec3(2);
@@ -34,16 +34,14 @@ float Fresnel(float im){
 	float n2 = (g+c)*(g+c);
 	float m1 = (c*(g+c)-1.0)*(c*(g+c)-1.0);
 	float m2 = (c*(g-c)+1.0)*(c*(g-c)+1.0);
-  return n1;
+  return 0.5*(n1/n2)*(1.0+(m1/m2));
 }
 
 // ============================================================
 
 float g(float Nm, float No, float om, float Ni, float im){
-	float n1 = 2.0*Nm*No;
-	n1 /= max(1.0, om);
-	float n2 = 2.0*Nm*Ni;
-	n2 /= max(1.0, im);
+	float n1 = (2.0*Nm*No)/om;
+	float n2 = (2.0*Nm*Ni)/im;
   return min( min(1.0, n1), n2);
 }
 
@@ -68,6 +66,7 @@ float CookTorrance(float Nm, float No, float om, float Ni, float im){
 
 void main(void)
 {
+
   vec3 i = normalize(SRCPOS - pos3D.xyz);
   vec3 o = normalize(-pos3D.xyz); // o == obsPos - pos3D.xyz
   vec3 m = normalize(i + o);
@@ -79,12 +78,44 @@ void main(void)
   float om = d_dot(o, m);
   float im = d_dot(i, m);
 
-  float FrSpec = CookTorrance(cosTm, cosTo, om, cosTi, im);
-	vec3 Fr = (vec3(0.0,0.9,0.0)/M_PI) + FrSpec*0.1; // Lambert rendering, eye light source
-	vec3 col = SRCPOW * Fr * cosTi;
-	//gl_FragColor = vec4(col,1.0);
 
-  vec3 refl = reflect(-o, N);
-  gl_FragColor = textureCube(u_skybox, normalize(refl * mat3(rot)));
-  //gl_FragColor = textureCube(u_skybox, pos3D.xyz);
+  // ========== Cook-Torrance ===========
+
+  if(material == 0.0) {
+    float FrSpec = CookTorrance(cosTm, cosTo, om, cosTi, im);
+  	vec3 Fr = (vec3(0.9,0.1,0.1)/M_PI) + FrSpec*0.1; // Lambert rendering, eye light source
+  	vec3 col = SRCPOW * Fr * cosTi;
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+
+
+
+  // ========== Mirror material ===========
+
+
+  if(material == 1.0){
+    vec3 refl = reflect(-o, N);
+    vec4 reflCol = textureCube(u_skybox, normalize(refl * mat3(rotMatrix)));
+    gl_FragColor = reflCol;
+  }
+
+
+
+  // ========== Transparent material ===========
+
+  if(material == 2.0){
+    float ior = 1.0/1.3;
+    vec3 refr = refract(-o, N, ior);
+    vec3 refl = reflect(-o, N);
+
+
+    float R2 = Fresnel(im);
+    vec4 refrCol = textureCube(u_skybox, normalize(refr * mat3(rotMatrix)));
+    vec4 reflCol = textureCube(u_skybox, normalize(refl * mat3(rotMatrix)));
+    gl_FragColor = (1.0 - R2) * refrCol + R2 * reflCol;
+  }
+
+
+
 }

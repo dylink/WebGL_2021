@@ -15,6 +15,18 @@
 <body onload="webGLStart();">
 	<canvas id="WebGL-test" style="border:none;" width="800" height="600"></canvas>
 	<br><br>
+	<div class="slidecontainer">
+  	<input type="range" min="1" max="100" value="5" class="slider" id="myRange">
+		<label for="myRange">Sigma</label>
+	</div>
+	<form>
+        <input type="radio" name="choice" value="0" id="cook_torrance">
+        <label for="cook_torrance">Cook-Torrance</label>
+				<input type="radio" name="choice" value="1" id="mirror">
+        <label for="mirror">Mirror</label>
+				<input type="radio" name="choice" value="2" id="transparent">
+        <label for="transparent">Transparent</label>
+    </form>
 </body>
 
 

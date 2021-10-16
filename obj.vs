@@ -8,8 +8,7 @@ uniform mat4 uMVMatrixRot;
 
 varying vec4 pos3D;
 varying vec3 N;
-varying mat4 rot;
-varying mat4 per;
+varying mat4 rotMatrix;
 
 
 
@@ -18,6 +17,6 @@ void main(void) {
 	pos3D = uMVMatrix * vec4(aVertexPosition,1.0);
 
 	N = vec3(uRMatrix * vec4(aVertexNormal,1.0));
-	rot = uMVMatrixRot;
+	rotMatrix = uMVMatrixRot;
 	gl_Position = uPMatrix * pos3D;
 }
