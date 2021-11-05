@@ -5,7 +5,6 @@ var gl;
 // =====================================================
 var mvMatrix = mat4.create();
 var pMatrix = mat4.create();
-var mvMatrixRot = mat4.create();
 var rotMatrix = mat4.create();
 var distCENTER;
 // =====================================================
@@ -47,6 +46,9 @@ class objmesh {
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.normalBuffer);
 		gl.vertexAttribPointer(this.shader.nAttrib, this.mesh.vertexBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
+
+
+		// Crédits : https://www.javascripttutorial.net/javascript-dom/javascript-radio-button/
 		const rbs = document.querySelectorAll('input[name="choice"]');
 		let selectedValue;
     for (const rb of rbs) {
@@ -60,6 +62,8 @@ class objmesh {
 		var slider = document.getElementById("myRange").value;
 		this.shader.sigma = gl.getUniformLocation(this.shader, "sigma");
 		gl.uniform1f(this.shader.sigma, slider/100.0);
+
+		let ni = document.getElementById("inputId").value;
 
 		this.shader.rMatrixUniform = gl.getUniformLocation(this.shader, "uRMatrix");
 		this.shader.mvMatrixUniform = gl.getUniformLocation(this.shader, "uMVMatrix");
@@ -76,14 +80,8 @@ class objmesh {
 		gl.uniformMatrix4fv(this.shader.mvMatrixUniform, false, mvMatrix);
 		gl.uniformMatrix4fv(this.shader.pMatrixUniform, false, pMatrix);
 
-		this.shader.skyboxLocation = gl.getUniformLocation(this.shader, "u_skybox");
-
-    gl.uniform1i(this.shader.skyboxLocation, 0);
-
-		mat4.identity(mvMatrixRot);
-		mat4.multiply(mvMatrixRot, rotMatrix);
-		mat4.rotateX(mvMatrixRot, 90 * Math.PI / 180);
-		gl.uniformMatrix4fv(this.shader.mvMatrixRotUniform, false, mvMatrixRot);
+		mat4.rotateX(mvMatrix, 90 * Math.PI / 180);
+		gl.uniformMatrix4fv(this.shader.mvMatrixRotUniform, false, mvMatrix);
 	}
 
 	// --------------------------------------------
@@ -103,6 +101,7 @@ class objmesh {
 
 // =====================================================
 // CUBEMAP, Création d'une skybox
+// Crédits : https://webglfundamentals.org/webgl/lessons/webgl-skybox.html
 // =====================================================
 
 class cubemap {

@@ -7,7 +7,6 @@ uniform mat4 uPMatrix;
 
 void main() {
   v_position =  a_position;
-  gl_Position = uPMatrix * uMVMatrix * vec4(a_position * 50.0, 1.0);
-  //gl_Position.z = 1.0;
+  gl_Position = uPMatrix * uMVMatrix * vec4(a_position * 40.0, 1.0);
 
 }

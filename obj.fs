@@ -12,7 +12,7 @@ uniform float sigma;
 
 #define M_PI 3.1415926535897932384626433832795
 
-//float sigma = 0.04;
+
 float ni = 4.0;
 
 vec3 SRCPOS = vec3(0);
